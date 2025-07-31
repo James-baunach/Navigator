@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Existing DOM Element References ---
+    // --- DOM Element References ---
     const photoUpload = document.getElementById('photo-upload');
     const photoListSection = document.getElementById('photo-list-section');
     const photoList = document.getElementById('photo-list');
@@ -10,8 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const navigationPrompt = document.getElementById('navigation-prompt');
     const nextLocationBtn = document.getElementById('next-location-btn');
     const offlineNotice = document.getElementById('offline-map-notice');
-
-    // --- New DOM Element References for Camera ---
     const takePhotoBtn = document.getElementById('take-photo-btn');
     const cameraModal = document.getElementById('camera-modal');
     const cameraView = document.getElementById('camera-view');
@@ -30,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDirection = 0;
 
     // =================================================================
-    // NEW CAMERA AND SENSORS LOGIC
+    // CAMERA AND SENSORS LOGIC WITH IMPROVED ERROR HANDLING
     // =================================================================
 
     takePhotoBtn.addEventListener('click', startCamera);
@@ -38,20 +36,30 @@ document.addEventListener('DOMContentLoaded', () => {
     captureBtn.addEventListener('click', capturePhoto);
 
     function startCamera() {
-        // First, request permissions for camera
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert("Camera access is not supported by your browser.");
+            return;
+        }
+
         navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' }, // Use the rear camera
+            video: { facingMode: 'environment' },
             audio: false
         })
         .then(stream => {
             currentStream = stream;
             cameraView.srcObject = stream;
             cameraModal.classList.remove('hidden');
-            startOrientationSensor(); // Start listening to compass
+            startOrientationSensor();
         })
         .catch(err => {
             console.error("Error accessing camera:", err);
-            alert("Could not access camera. Please ensure you have given permission in your browser or device settings.");
+            let message = "Could not access camera. Please ensure you 'Allow' access when prompted.";
+            if (err.name === "NotAllowedError") {
+                message = "Camera access was denied. Please go to your browser's settings for this site and re-enable camera permission.";
+            } else if (err.name === "NotFoundError") {
+                message = "No rear camera was found on your device.";
+            }
+            alert(message);
         });
     }
 
@@ -63,26 +71,26 @@ document.addEventListener('DOMContentLoaded', () => {
         stopOrientationSensor();
     }
 
-    // Access compass data (device orientation)
     function startOrientationSensor() {
         if ('DeviceOrientationEvent' in window) {
-             // iOS 13+ requires a specific permission request for this event
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
                     .then(permissionState => {
                         if (permissionState === 'granted') {
-                             window.addEventListener('deviceorientation', handleOrientation);
+                            window.addEventListener('deviceorientation', handleOrientation);
                         } else {
-                            alert("Permission for compass was not granted.");
+                            alert("Permission for compass was not granted. Direction will not be available.");
                         }
                     })
-                    .catch(console.error);
+                    .catch(err => {
+                         alert("An error occurred while requesting compass permission.");
+                         console.error(err);
+                    });
             } else {
-                // Handle non-iOS 13+ devices which don't require explicit permission
                 window.addEventListener('deviceorientation', handleOrientation);
             }
         } else {
-            alert("Device orientation (compass) not supported on this device/browser.");
+            alert("Device orientation (compass) is not supported by your device or browser.");
         }
     }
     
@@ -91,7 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleOrientation(event) {
-        // webkitCompassHeading is a Safari-specific property for iOS
         const heading = event.webkitCompassHeading || event.alpha;
         if (heading !== null) {
             currentDirection = Math.round(heading);
@@ -100,21 +107,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function capturePhoto() {
-        // Get high-accuracy location when the capture button is pressed
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser.");
+            return;
+        }
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
 
-                // Draw the current video frame to a hidden canvas
                 const context = photoCanvas.getContext('2d');
                 photoCanvas.width = cameraView.videoWidth;
                 photoCanvas.height = cameraView.videoHeight;
                 context.drawImage(cameraView, 0, 0, photoCanvas.width, photoCanvas.height);
 
-                // Create a jpeg image from the canvas
                 const thumbnail = photoCanvas.toDataURL('image/jpeg');
 
-                // Combine the captured data into one object
                 const newPhotoData = {
                     fileName: `capture_${Date.now()}.jpg`,
                     lat: latitude,
@@ -127,21 +135,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayPhotoList();
                 photoListSection.classList.remove('hidden');
 
-                // Clean up
                 stopCamera();
             },
             (error) => {
                 console.error("Error getting location:", error);
-                alert("Could not get your location. Please ensure location services are enabled and permission is granted.");
+                let message = "Could not get your location.";
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        message = "Location access was denied. Please go to your browser's site settings and re-enable location permission.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        message = "Location information is currently unavailable. Please move to an area with a better GPS signal.";
+                        break;
+                    case error.TIMEOUT:
+                        message = "The request to get your location timed out. Please try again.";
+                        break;
+                }
+                alert(message);
             },
             {
-                enableHighAccuracy: true, // Request the most accurate location possible
-                timeout: 10000,
+                enableHighAccuracy: true,
+                timeout: 15000,
                 maximumAge: 0
             }
         );
     }
-
 
     // =================================================================
     // EXISTING PHOTO UPLOAD AND PROCESSING LOGIC (Fallback)
@@ -178,24 +196,20 @@ document.addEventListener('DOMContentLoaded', () => {
             EXIF.getData(file, function() {
                 const lat = EXIF.getTag(this, "GPSLatitude");
                 const lon = EXIF.getTag(this, "GPSLongitude");
-
                 if (lat && lon) {
                     const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
                     const lonRef = EXIF.getTag(this, "GPSLongitudeRef") || "W";
                     const direction = EXIF.getTag(this, "GPSImgDirection");
                     const decimalLat = convertDMSToDD(lat, latRef);
                     const decimalLon = convertDMSToDD(lon, lonRef);
-
                     const reader = new FileReader();
-                    reader.onload = e => {
-                        resolve({
-                            fileName: file.name,
-                            lat: decimalLat,
-                            lon: decimalLon,
-                            direction: direction ? Math.round(direction) : 'N/A',
-                            thumbnail: e.target.result
-                        });
-                    };
+                    reader.onload = e => resolve({
+                        fileName: file.name,
+                        lat: decimalLat,
+                        lon: decimalLon,
+                        direction: direction ? Math.round(direction) : 'N/A',
+                        thumbnail: e.target.result
+                    });
                     reader.readAsDataURL(file);
                 } else {
                     resolve(null);
@@ -221,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
         photoMetadata.forEach((data, index) => {
             const listItem = document.createElement('li');
             listItem.draggable = true;
-            listItem.dataset.index = index; // This index is crucial for reordering
+            listItem.dataset.index = index;
             listItem.innerHTML = `<img src="${data.thumbnail}" alt="${data.fileName}"> <span>${data.fileName}</span>`;
             photoList.appendChild(listItem);
         });
@@ -231,30 +245,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function addDragAndDropListeners() {
         const listItems = photoList.querySelectorAll('li');
         let draggedItem = null;
-
         listItems.forEach(item => {
             item.addEventListener('dragstart', () => {
                 draggedItem = item;
                 setTimeout(() => item.classList.add('dragging'), 0);
             });
             item.addEventListener('dragend', () => {
-                if (draggedItem) {
-                    draggedItem.classList.remove('dragging');
-                }
+                if (draggedItem) draggedItem.classList.remove('dragging');
                 draggedItem = null;
                 updatePhotoOrder();
             });
         });
-
         photoList.addEventListener('dragover', (e) => {
             e.preventDefault();
             const afterElement = getDragAfterElement(photoList, e.clientY);
             if (draggedItem) {
-                if (afterElement == null) {
-                    photoList.appendChild(draggedItem);
-                } else {
-                    photoList.insertBefore(draggedItem, afterElement);
-                }
+                if (afterElement == null) photoList.appendChild(draggedItem);
+                else photoList.insertBefore(draggedItem, afterElement);
             }
         });
     }
@@ -264,24 +271,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
-            }
+            if (offset < 0 && offset > closest.offset) return { offset, element: child };
+            else return closest;
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
     function updatePhotoOrder() {
         const newOrderedMetadata = [];
-        // Read the new order from the DOM
         photoList.querySelectorAll('li').forEach(item => {
-            const originalIndex = parseInt(item.dataset.index, 10);
-            newOrderedMetadata.push(photoMetadata[originalIndex]);
+            newOrderedMetadata.push(photoMetadata[parseInt(item.dataset.index, 10)]);
         });
-        // Replace the old array with the newly ordered one
         photoMetadata = newOrderedMetadata;
-        // Re-render the list to update the data-index attributes for the next drag
         displayPhotoList();
     }
 
@@ -301,11 +301,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
         }
-        if (!navigator.onLine) {
-            offlineNotice.classList.remove('hidden');
-        } else {
-            offlineNotice.classList.add('hidden');
-        }
+        if (!navigator.onLine) offlineNotice.classList.remove('hidden');
+        else offlineNotice.classList.add('hidden');
     }
 
     function drawRoute() {
@@ -339,8 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
         navigationPrompt.innerHTML = `
             <p>Navigate to <strong>Point ${navigationIndex + 1}</strong>.</p>
             <p>Once you arrive, please orient yourself to face <strong>${currentPoint.direction}°</strong>.</p>
-            <small>${currentPoint.fileName}</small>
-        `;
+            <small>${currentPoint.fileName}</small>`;
     }
 
     nextLocationBtn.addEventListener('click', () => {

@@ -15,11 +15,28 @@
             <h1>Property Photo Navigator</h1>
         </header>
         <main>
-            <div id="upload-section">
-                <h2>1. Upload Your Property Photos</h2>
-                <p>Select photos with GPS data.</p>
-                <input type="file" id="photo-upload" multiple accept="image/jpeg,image/png">
+            <div id="capture-section">
+                <h2>1. Add a New Photo</h2>
+                <button id="take-photo-btn">Take a New Photo</button>
+                <div class="or-divider">OR</div>
+                <div id="upload-section">
+                    <label for="photo-upload">Upload Existing Photos</label>
+                    <input type="file" id="photo-upload" multiple accept="image/jpeg,image/png">
+                    <small>Note: GPS data may be missing from uploaded photos.</small>
+                </div>
             </div>
+
+            <!-- Modal for Camera View -->
+            <div id="camera-modal" class="hidden">
+                <div id="camera-container">
+                    <video id="camera-view" autoplay playsinline></video>
+                    <canvas id="photo-canvas" class="hidden"></canvas>
+                    <div id="camera-direction-display">Direction: ---°</div>
+                    <button id="capture-btn">Capture</button>
+                    <button id="cancel-camera-btn">Cancel</button>
+                </div>
+            </div>
+
 
             <div id="photo-list-section" class="hidden">
                 <h2>2. Set Navigation Order</h2>

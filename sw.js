@@ -1,4 +1,4 @@
-const CACHE_NAME = 'property-navigator-v3'; // Incremented cache version
+const CACHE_NAME = 'property-navigator-v4'; // Incremented cache version
 const urlsToCache = [
   '/',
   '/index.html',

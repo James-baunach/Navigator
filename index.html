@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Photo Navigator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007bff"/>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Property Photo Navigator</h1>
+        </header>
+        <main>
+            <div id="upload-section">
+                <h2>1. Upload Your Property Photos</h2>
+                <p>Select photos with GPS data.</p>
+                <input type="file" id="photo-upload" multiple accept="image/jpeg,image/png">
+            </div>
+
+            <div id="photo-list-section" class="hidden">
+                <h2>2. Set Navigation Order</h2>
+                <p>Drag and drop the photos to set your desired route.</p>
+                <ul id="photo-list"></ul>
+                <button id="start-navigation-btn">Start Navigation</button>
+            </div>
+
+            <div id="map-section" class="hidden">
+                <h2>3. Your Map</h2>
+                <div id="map"></div>
+                <div id="offline-map-notice" class="hidden">Map tiles may not be available offline. Your route is still visible.</div>
+            </div>
+
+            <div id="navigation-section" class="hidden">
+                <h2>4. Follow the Route</h2>
+                <div id="navigation-prompt"></div>
+                <button id="next-location-btn">I've Arrived at Next Location</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <script src="app.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

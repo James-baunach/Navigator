@@ -15,42 +15,60 @@
             <h1>Property Photo Navigator</h1>
         </header>
         <main>
-            <div id="capture-section">
-                <h2>1. Add a New Photo</h2>
+            <!-- Section 1: Initial Actions -->
+            <div id="initial-actions">
+                 <h2>1. Start a Project</h2>
                 <button id="take-photo-btn">Take a New Photo</button>
+                <button id="load-project-btn">Load Saved Project</button>
                 <div class="or-divider">OR</div>
                 <div id="upload-section">
-                    <label for="photo-upload">Upload Existing Photos</label>
+                    <label for="photo-upload">Upload Existing Photos to a New Project</label>
                     <input type="file" id="photo-upload" multiple accept="image/jpeg,image/png">
                     <small>Note: GPS data may be missing from uploaded photos.</small>
                 </div>
             </div>
 
-            <!-- Modal for Camera View -->
+            <!-- Camera Modal -->
             <div id="camera-modal" class="hidden">
                 <div id="camera-container">
                     <video id="camera-view" autoplay playsinline></video>
                     <canvas id="photo-canvas" class="hidden"></canvas>
                     <div id="camera-direction-display">Direction: ---°</div>
-                    <button id="capture-btn">Capture</button>
-                    <button id="cancel-camera-btn">Cancel</button>
+                    <button id="capture-btn" title="Capture Photo"></button>
+                    <button id="cancel-camera-btn" title="Cancel">&times;</button>
                 </div>
             </div>
 
+            <!-- Load Project Modal -->
+            <div id="load-project-modal" class="hidden">
+                 <div class="modal-content">
+                    <h2>Select a Project to Load</h2>
+                    <ul id="saved-projects-list"></ul>
+                    <button id="cancel-load-btn">Cancel</button>
+                 </div>
+            </div>
 
+            <!-- Section 2: Photo List & Project Management -->
             <div id="photo-list-section" class="hidden">
-                <h2>2. Set Navigation Order</h2>
+                <h2>2. Review Points &amp; Save Project</h2>
+                <div id="project-save-container">
+                    <input type="text" id="project-name" placeholder="Enter Project Name (e.g., Smith Property)">
+                    <button id="save-project-btn">Save Project</button>
+                </div>
                 <p>Drag and drop the photos to set your desired route.</p>
                 <ul id="photo-list"></ul>
                 <button id="start-navigation-btn">Start Navigation</button>
             </div>
 
+            <!-- Section 3: Map View -->
             <div id="map-section" class="hidden">
                 <h2>3. Your Map</h2>
                 <div id="map"></div>
+                <button id="download-map-btn">Download Map for Offline Use</button>
                 <div id="offline-map-notice" class="hidden">Map tiles may not be available offline. Your route is still visible.</div>
             </div>
 
+            <!-- Section 4: Navigation View -->
             <div id="navigation-section" class="hidden">
                 <h2>4. Follow the Route</h2>
                 <div id="navigation-prompt"></div>
@@ -68,12 +86,8 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
+                    .then(reg => console.log('ServiceWorker registration successful.', reg))
+                    .catch(err => console.log('ServiceWorker registration failed: ', err));
             });
         }
     </script>

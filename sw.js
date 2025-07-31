@@ -1,38 +1,35 @@
-const CACHE_NAME = 'property-navigator-v2.1';
+const CACHE_NAME = 'property-navigator-v3'; // Incremented cache version
 const urlsToCache = [
   '/',
   '/index.html',
   '/style.css',
   '/app.js',
   '/manifest.json',
-  '/images/icon-192.png',
+  '/images/icon-128.png',
   '/images/icon-512.png',
   'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js',
   'https://cdn.jsdelivr.net/npm/exif-js'
 ];
 
-// Install the service worker and cache the app shell
+// Install: Cache the app shell
 self.addEventListener('install', event => {
-  // Perform install steps
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then(cache => {
+      console.log('SW: Caching app shell');
+      return cache.addAll(urlsToCache);
+    })
   );
 });
 
-// Activate the service worker and clean up old caches
+// Activate: Clean up old caches
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            // Delete old cache versions
+          if (cacheName !== CACHE_NAME) {
+            console.log('SW: Clearing old cache', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -41,46 +38,34 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Intercept fetch requests and serve from cache if available
+// NEW: Listen for messages from the app
+self.addEventListener('message', event => {
+    if (event.data.action === 'cache-tiles') {
+        console.log('SW: Received tile URLs to cache.');
+        event.waitUntil(
+            caches.open(CACHE_NAME).then(cache => {
+                console.log('SW: Caching', event.data.urls.length, 'tiles.');
+                // Use addAll to fetch and cache all tile URLs.
+                // It will stop if any single request fails.
+                return cache.addAll(event.data.urls).catch(err => {
+                    console.error('SW: Failed to cache some tiles.', err);
+                });
+            })
+        );
+    }
+});
+
+
+// Fetch: Serve from cache first, then network
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response from cache
-        if (response) {
-          return response;
-        }
-
-        // Not in cache - fetch from network
-        return fetch(event.request).then(
-          response => {
-            // Check if we received a valid response for assets we want to cache
-            if (!response || response.status !== 200 || response.type !== 'basic' && response.type !== 'cors') {
-              return response;
-            }
-
-            // IMPORTANT: Clone the response. A response is a stream
-            // and because we want the browser to consume the response
-            // as well as the cache consuming the response, we need
-            // to clone it so we have two streams.
-            const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                  // We don't cache map tiles here, only the app shell and libraries
-                  if (urlsToCache.includes(event.request.url)) {
-                    cache.put(event.request, responseToCache);
-                  }
-              });
-
-            return response;
-          }
-        ).catch(error => {
-            // This will handle network errors, e.g., when offline
-            console.log('Fetch failed; returning offline page instead.', error);
-            // Optionally, return a fallback page here, but for this app, letting it fail is okay
-            // as the app shell is already loaded.
-        });
-      })
+    caches.match(event.request).then(response => {
+      // If we have a match in the cache, return it.
+      if (response) {
+        return response;
+      }
+      // Otherwise, fetch from the network.
+      return fetch(event.request);
+    })
   );
 });

@@ -13,15 +13,27 @@ header h1 { text-align: center; color: #0056b3; }
 /* Buttons & Inputs */
 button { display: block; width: 100%; padding: 12px; margin-top: 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; transition: background-color 0.2s; }
 button:hover { background-color: #0056b3; }
-#take-photo-btn { background-color: #28a745; }
-#take-photo-btn:hover { background-color: #218838; }
+#take-photo-btn, #add-another-photo-btn { background-color: #28a745; } /* Made consistent */
+#take-photo-btn:hover, #add-another-photo-btn:hover { background-color: #218838; }
 #load-project-btn { background-color: #ffc107; color: #212529; }
 #load-project-btn:hover { background-color: #e0a800; }
-input[type="text"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
 .or-divider { text-align: center; margin: 20px 0; font-weight: bold; color: #6c757d; }
 #upload-section label { display: block; text-align: center; font-weight: bold; margin-bottom: 10px; }
 input[type="file"] { display: block; width: 100%; padding: 10px; }
 #upload-section small { display: block; text-align: center; margin-top: 5px; color: #6c757d; }
+
+/* NEW: Project Controls Container */
+#project-controls-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    align-items: center;
+}
+#project-controls-container input {
+    grid-column: 1 / -1; /* Make input span both columns */
+    margin-bottom: 5px;
+}
 
 /* Camera Modal */
 #camera-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); z-index: 1000; display: flex; justify-content: center; align-items: center; }
